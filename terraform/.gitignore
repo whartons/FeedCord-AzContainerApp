@@ -1,6 +1,0 @@
-# Terraform local state and providers
-.terraform/
-terraform.tfstate
-terraform.tfstate.backup
-crash.log
-*.tfvars
