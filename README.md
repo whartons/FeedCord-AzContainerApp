@@ -30,7 +30,7 @@ FeedCord is very simple to get up and running. It only takes a few steps:
 
 Provided below is a quick guide to get up and running.
 
----
+Provided below is a quick guide to get up and running.
 
 ## Deploying to Azure Container Apps
 
@@ -220,8 +220,6 @@ dotnet run -- path\to\your\appsettings.json
 With the above steps completed, FeedCord should now be running and posting updates from your RSS feeds directly to your Discord channel.
 
 <a href="https://www.buymeacoffee.com/Qolors" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-
----
 
 ---
 
