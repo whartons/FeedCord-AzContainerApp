@@ -64,3 +64,37 @@ terraform output container_app_url
 # Check the principal ID of the app identity
 terraform output container_app_principal_id
 ```
+
+## Testing & Troubleshooting
+
+### Ingress (Inbound)
+To verify the app is reachable from the internet:
+1. Get the URL: `terraform output container_app_url`.
+2. Visit the URL or use `curl -I <URL>`.
+   - *Note*: FeedCord is a background service and may not serve a web page, but the URL should be reachable if ingress is enabled.
+
+### Egress (Outbound)
+To test if the container can reach external services:
+1. **Interactive Console** (Targeting the `debugger` container which has `curl` pre-installed):
+   ```bash
+   # Add --container debugger to specify the sidecar
+   az containerapp exec \
+     --name feedcord-app \
+     --resource-group feedcord-rg \
+     --container debugger \
+     --command "/bin/sh"
+   ```
+2. **Test Connectivity**:
+   Inside the container, try to reach an external site:
+   ```sh
+   curl -I https://discord.com
+   ```
+
+### Logs
+To watch the real-time application logs:
+```bash
+az containerapp logs show \
+  --name feedcord-app \
+  --resource-group feedcord-rg \
+  --follow
+```

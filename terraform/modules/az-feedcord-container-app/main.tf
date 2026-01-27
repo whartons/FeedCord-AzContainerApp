@@ -37,12 +37,51 @@ resource "azurerm_container_app" "feedcord" {
         secret_name = "appsettings-json"
       }
 
-      # Force the .NET app (FeedCord) to listen on port 80 to match the Ingress configuration.
-      # This ensures alignment between the placeholder (listening on 80) and the final app.
       env {
         name  = "ASPNETCORE_URLS"
         value = "http://+:80"
       }
+
+      volume_mounts {
+        name = "appsettings-vol"
+        path = "/app/config"
+      }
+    }
+
+    # Debugger Sidecar: Provides curl and a shell for testing egress/ingress
+    # before the first GitHub Action deployment.
+    container {
+      name    = "debugger"
+      image   = "alpine:latest"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["sh", "-c", "apk add --no-cache curl && sleep infinity"]
+    }
+
+    init_container {
+      name   = "config-setup"
+      image  = "alpine:latest"
+      command = ["sh", "-c", "cp /mnt/secrets/appsettings-json /app/config/appsettings.json"]
+
+      volume_mounts {
+        name = "secret-vol"
+        path = "/mnt/secrets"
+      }
+
+      volume_mounts {
+        name = "appsettings-vol"
+        path = "/app/config"
+      }
+    }
+
+    volume {
+      name = "appsettings-vol"
+      storage_type = "EmptyDir"
+    }
+
+    volume {
+      name = "secret-vol"
+      storage_type = "Secret"
     }
 
     min_replicas = 1
@@ -64,6 +103,11 @@ resource "azurerm_container_app" "feedcord" {
     value = var.appsettings_json
   }
 
+  # Map the secret to a specific file inside the volume
+  # Note: The 'azure-native' term for this is secretRef, but in azurerm it's handled via the template volume object.
+  # However, the azurerm provider (v4.0) handles secret volumes by mapping the secret name to a file with the same name.
+  # We might need to adjust the path or use a different approach if the filename needs to be exactly appsettings.json.
+
   identity {
     type = "SystemAssigned"
   }
@@ -71,7 +115,8 @@ resource "azurerm_container_app" "feedcord" {
   lifecycle {
     ignore_changes = [
       template[0].container[0].image,
-      registry
+      registry,
+      secret
     ]
   }
 }

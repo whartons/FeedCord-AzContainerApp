@@ -35,17 +35,13 @@ jobs:
       run: |
         az acr login --name $ACR_NAME
 
-    - name: Pull upstream Docker image
+    - name: Build and push container image with curl
       run: |
-        docker pull qolors/feedcord:latest
-
-    - name: Client tag image
-      run: |
-        docker tag qolors/feedcord:latest $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest
-
-    - name: Push Docker image to ACR
-      run: |
-        docker push $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest
+        docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest - <<EOF
+        FROM qolors/feedcord:latest
+        RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+        EOF
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
     - name: Deploy to Azure Container Apps
       run: |
@@ -58,4 +54,5 @@ jobs:
         az containerapp update \
           --name $CONTAINER_APP_NAME \
           --resource-group $AZURE_RESOURCE_GROUP \
-          --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest
+          --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest \
+          --set-secrets "appsettings-json=${{ secrets.FEEDCORD_APPSETTINGS }}"
