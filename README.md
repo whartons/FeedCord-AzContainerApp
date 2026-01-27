@@ -30,6 +30,74 @@ FeedCord is very simple to get up and running. It only takes a few steps:
 
 Provided below is a quick guide to get up and running.
 
+Provided below is a quick guide to get up and running.
+
+## Deploying to Azure Container Apps
+
+This repository includes Terraform configuration to deploy FeedCord to Azure Container Apps.
+
+### Prerequisites
+
+1. **Azure CLI** - Install from [microsoft.com](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
+2. **Terraform** - Install from [terraform.io](https://www.terraform.io/downloads)
+3. **Azure Subscription** - You'll need an active Azure subscription
+4. **Service Principal for GitHub Actions** (for the deployment workflow):
+
+    The Terraform apply step will output a sensitive JSON blob named `azure_credentials_json`.
+    This JSON contains the Client ID, Tenant ID, and Subscription ID needed for GitHub Actions OIDC login.
+    
+    To view this value, run:
+    ```bash
+    terraform output -raw azure_credentials_json
+    ```
+    
+    Copy this entire JSON output and add it as a GitHub secret:
+    - Go to Settings → Environments (Create Environment If You Don't Have One)
+    - Click "New environment secret"
+    - Name: `AZURE_CREDENTIALS`
+    - Value: Paste the JSON output from Terraform
+
+
+5. **GitHub Repository Environment Variables** (for the deployment workflow):
+   - `ACR_NAME` - Your Azure Container Registry name
+   - `AZURE_RESOURCE_GROUP` - Your resource group name  
+   - `CONTAINER_APP_NAME` - Your container app name
+
+6. **GitHub Repository Secret** (for the deployment workflow):
+   - `FEEDCORD_APPSETTINGS` - Your complete `appsettings.json` content as a GitHub secret. This contains your RSS feeds, Discord webhook URLs, and other configuration.
+
+### Deployment Steps
+
+**Step 1: Run Terraform Locally**
+
+First, provision the Azure infrastructure using Terraform:
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+This creates your infrastructure and deploys a temporary "Hello World" placeholder. This ensures the infrastructure is ready before the application deployment. See [terraform/README.md](terraform/README.md) for detailed configuration options.
+
+**Step 2: Update GitHub Secrets**
+
+Before running the deployment workflow, add the GitHub Actions credentials and configuration:
+
+1. Add `AZURE_CREDENTIALS` as a GitHub secret (using the `azure_credentials_json` Terraform output)
+
+3. Add the repository variables: `ACR_NAME`, `AZURE_RESOURCE_GROUP`, `CONTAINER_APP_NAME`
+4. Add `FEEDCORD_APPSETTINGS` secret with your complete `appsettings.json` content
+
+**Step 3: Run the Deployment Workflow**
+
+The `deploy-feedcord.yml` workflow pulls the official FeedCord Docker image, pushes it to your ACR, and deploys it to the Container App.
+
+Trigger it manually:
+- Go to Actions → "Build and Deploy FeedCord" → "Run workflow"
+
+---
 
 ## Quick Setup
 

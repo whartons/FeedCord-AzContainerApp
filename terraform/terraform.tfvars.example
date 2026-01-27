@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars or pass values via -var on the CLI
+
+resource_group_name = "feedcord-rg"
+location            = "eastus"
+acr_name            = "feedcordacr"
+container_app_name  = "feedcord-app"
+environment_name    = "feedcord-env"
+# Provide your appsettings.json inline or via a file
+appsettings_json    = "{\"Logging\":{\"LogLevel\":{\"Default\":\"Information\"}}}"
+image_tag           = "latest"
+# Autoscaling defaults (can be overridden in terraform.tfvars)
+# Use min_replicas = 0 to enable scale-to-zero for minimal cost
+min_replicas        = 0
+max_replicas        = 1
+# The HTTP concurrent requests threshold for scaling
+concurrent_requests = 50
