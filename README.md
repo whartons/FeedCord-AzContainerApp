@@ -52,13 +52,13 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
     ```
     
     Copy this entire JSON output and add it as a GitHub secret:
-    - Go to Settings → Environments (Create Environment If You Don't Have One)
-    - Click "New environment secret"
+    - Go to Settings → Secrets and variables → Actions
+    - Click "New repository secret"
     - Name: `AZURE_CREDENTIALS`
     - Value: Paste the JSON output from Terraform
 
 
-5. **GitHub Repository Environment Variables** (for the deployment workflow):
+5. **GitHub Repository Variables** (for the deployment workflow):
    - `ACR_NAME` - Your Azure Container Registry name
    - `AZURE_RESOURCE_GROUP` - Your resource group name  
    - `CONTAINER_APP_NAME` - Your container app name
