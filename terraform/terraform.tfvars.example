@@ -1,16 +1,27 @@
-# Copy to terraform.tfvars or pass values via -var on the CLI
+# Copy to terraform.tfvars and fill in your values
 
 resource_group_name = "feedcord-rg"
 location            = "eastus"
+
+# Azure Authentication & GitHub OIDC
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+tenant_id           = "00000000-0000-0000-0000-000000000000"
+github_repo         = "your-username/FeedCord-AzContainerApp"
+
+# Azure Resources
 acr_name            = "feedcordacr"
 container_app_name  = "feedcord-app"
 environment_name    = "feedcord-env"
+
+# Application Settings
 # Provide your appsettings.json inline or via a file
 appsettings_json    = "{\"Logging\":{\"LogLevel\":{\"Default\":\"Information\"}}}"
 image_tag           = "latest"
+
 # Autoscaling defaults (can be overridden in terraform.tfvars)
-# Use min_replicas = 0 to enable scale-to-zero for minimal cost
-min_replicas        = 0
+# FeedCord usually requires min_replicas = 1 to continuously poll.
+min_replicas        = 1
 max_replicas        = 1
+
 # The HTTP concurrent requests threshold for scaling
 concurrent_requests = 50

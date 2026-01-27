@@ -1,9 +1,8 @@
-name: Build and Push Docker Images
+name: Build and Push Docker Images (Unused)
 
 on:
-  push:
-    branches:
-      - development
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest

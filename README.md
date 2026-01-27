@@ -1,37 +1,7 @@
 ﻿
 ![FeedCord Banner](https://github.com/Qolors/FeedCord/blob/master/FeedCord/docs/images/FeedCord.png)
 ---
-
-# FeedCord: Self-hosted RSS Reader for Discord
-
-FeedCord is designed to be a 'turn key' automated RSS feed reader with the main focus on Discord Servers. 
-
-Use it for increasing community engagement and activity or just for your own personal use. The combination of FeedCord and Discord's Forum Channels can really shine to make a vibrant news feed featuring gallery-style display alongside custom threads, creating an engaging space for your private community discussions.
-
-### An example of what FeedCord can bring to your server
-
----
-
-![FeedCord Gallery 1](https://github.com/Qolors/FeedCord/blob/master/FeedCord/docs/images/gallery1.png)
-
-![FeedCord Gallery 2](https://github.com/Qolors/FeedCord/blob/master/FeedCord/docs/images/gallery2.png)
-
-A showing of one channel. Run as many of these as you want!
-
-
----
-
-## Running FeedCord
-
-FeedCord is very simple to get up and running. It only takes a few steps:
-
-- Create a Discord Webhook
-- Create and Edit a local file or two
-
-Provided below is a quick guide to get up and running.
-
-Provided below is a quick guide to get up and running.
-
+## Fork Information - Stock Readme Included Below
 ## Deploying to Azure Container Apps
 
 This repository includes Terraform configuration to deploy FeedCord to Azure Container Apps.
@@ -63,8 +33,9 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
    - `AZURE_RESOURCE_GROUP` - Your resource group name  
    - `CONTAINER_APP_NAME` - Your container app name
 
-6. **GitHub Repository Secret** (for the deployment workflow):
+6. **GitHub Repository Secrets** (for the deployment workflow):
    - `FEEDCORD_APPSETTINGS` - Your complete `appsettings.json` content as a GitHub secret. This contains your RSS feeds, Discord webhook URLs, and other configuration.
+   - `AZURE_CREDENTIALS` - The JSON output from Terraform's `azure_credentials_json`.
 
 ### Deployment Steps
 
@@ -98,10 +69,33 @@ Trigger it manually:
 - Go to Actions → "Build and Deploy FeedCord" → "Run workflow"
 
 ---
+## Stock Readme Begin
+# FeedCord: Self-hosted RSS Reader for Discord
 
-## Quick Setup
+FeedCord is designed to be a 'turn key' automated RSS feed reader with the main focus on Discord Servers. 
 
-### 1. Create a new folder with a new file named `appsettings.json` inside with the following content:
+Use it for increasing community engagement and activity or just for your own personal use. The combination of FeedCord and Discord's Forum Channels can really shine to make a vibrant news feed featuring gallery-style display alongside custom threads, creating an engaging space for your private community discussions.
+
+### An example of what FeedCord can bring to your server
+
+---
+
+![FeedCord Gallery 1](https://github.com/Qolors/FeedCord/blob/master/FeedCord/docs/images/gallery1.png)
+
+![FeedCord Gallery 2](https://github.com/Qolors/FeedCord/blob/master/FeedCord/docs/images/gallery2.png)
+
+A showing of one channel. Run as many of these as you want!
+
+## Running FeedCord
+
+FeedCord is very simple to get up and running. It only takes a few steps:
+
+- Create a Discord Webhook
+- Create and Edit a local file or two
+
+## Configuration (`appsettings.json`)
+
+To run FeedCord (locally or in Azure), you first need to configure your feeds. Create a file named `appsettings.json` with the following content:
 
 ```json
 {
@@ -176,6 +170,10 @@ You can use online web tools like [tunepocket](https://www.tunepocket.com/youtub
        "https://www.youtube.com/feeds/videos.xml?channel_id={YOUR_CHANNEL_ID_HERE}"
      ]
 ```
+
+
+Provided below is a quick guide to get up and running.
+---
 
 ### Running FeedCord
 
