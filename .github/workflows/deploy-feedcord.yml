@@ -66,7 +66,8 @@ jobs:
             "--resource-group", resource_group,
             "--container-name", "feedcord",
             "--image", image_name,
-            "--args", "/mnt/config/appsettings-json",
+            "--command", "/bin/sh", "-c",
+            "--args", "ln -sf /mnt/state/feed_dump.csv /app/feed_dump.csv && dotnet FeedCord.dll /mnt/config/appsettings-json",
             "--set-env-vars", f"DEPLOY_TIMESTAMP={subprocess.check_output(['date', '+%s']).decode().strip()}"
         ], check=True)
       env:

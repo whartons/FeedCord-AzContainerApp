@@ -1,11 +1,17 @@
 # Deploying FeedCord with Terraform
 
-This folder contains the Terraform configuration to provision the Azure infrastructure for FeedCord. It uses the `az-feedcord-container-app` module found in `./modules/az-feedcord-container-app`.
+This folder contains the Terraform configuration to provision the Azure infrastructure for FeedCord. It utilizes a **Scale-to-Zero** architecture with **Ghost Gist Persistence** to achieve a truly $0 monthly cost.
 
 ## Prerequisites
 - **Terraform 1.0+**
 - **Azure CLI**
-- **Azure Subscription** (You'll need your Subscription ID and Tenant ID)
+- **Azure Subscription**
+- **GitHub Personal Access Token (PAT)**: Requires the `gist` scope. Generate one at [GitHub Token Settings](https://github.com/settings/tokens).
+- **GitHub Gist**: Create a **Secret Gist** at [gist.github.com](https://gist.github.com/):
+  - **Filename**: `feed_dump.csv`
+  - **Content**: `url,isYoutube,lastRunDate` (copy this exact line)
+  - **Visibility**: Secret
+  - **Gist ID**: After creating, copy the long alphanumeric string from the end of the URL (e.g., `https://gist.github.com/user/a1b2c3d4...` -> the ID is `a1b2c3d4...`).
 
 ## Quickstart
 
@@ -19,16 +25,12 @@ This folder contains the Terraform configuration to provision the Azure infrastr
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    ```
-   Edit `terraform.tfvars` and set your `subscription_id`, `tenant_id`, and `github_repo` (e.g., `username/FeedCord-AzContainerApp`).
+   Edit `terraform.tfvars` and set your `subscription_id`, `tenant_id`, and `github_token`.
 
 3. **Initialize and Apply**:
    ```bash
    terraform init
-   ```
-   ```bash
    terraform plan
-   ```
-   ```bash
    terraform apply
    ```
 
@@ -46,32 +48,28 @@ This folder contains the Terraform configuration to provision the Azure infrastr
 - **Container App**: Running the FeedCord application (pulling directly from `qolors/feedcord:latest`).
 - **Federated Identity**: Enables passwordless GitHub Actions login via OIDC.
 
+### The "Ghost Gist" Persistence ($0)
+Instead of paying for Azure Storage, this deployment uses a **Private GitHub Gist** to store the RSS poll state (`feed_dump.csv`).
+- **Manual Setup**: You must create a private Gist once manually and provide its ID to Terraform.
+- **Lifecycle Sync**: 
+  - **Sync-Down**: When the container wakes up, a sidecar container downloads the latest state from your Gist.
+  - **Sync-Up**: When the container prepares to shut down, the sidecar uploads the updated state back to GitHub.
+
 ### Scaling & $0 Cost Strategy
 - **Scale-to-Zero**: Defaults to `min_replicas = 0`. The application will shut down completely when idle to ensure it stays within the **Azure Always Free** grant.
 - **Periodic Triggers**: Since FeedCord is a background poller, it is "woken up" every 15 minutes by a GitHub Action (`feedcord-keep-alive.yml`). This trigger pings the app's URL, causing it to scale up, poll for new feeds, and then scale back down.
 - **Resources**: Default allocation is 0.25 vCPU and 0.5Gi RAM.
 
 ## Outputs
-After a successful `terraform apply`, you will need these values for your GitHub Repository configuration:
+Run these commands to get the values needed for your GitHub Actions secrets:
 
-| Output | Command to View | Usage |
+| Output | Command | Usage |
 | :--- | :--- | :--- |
-| `container_app_url` | `az containerapp show -n <app-name> -g <rg-name> --query properties.configuration.ingress.fqdn -o tsv` | Add as `CONTAINER_APP_URL` variable in GitHub (Add `https://`). |
-| `azure_credentials_json` | `terraform output -raw azure_credentials_json` | Add as `AZURE_CREDENTIALS` secret in GitHub. |
+| `container_app_url` | `terraform output -raw container_app_url` | `CONTAINER_APP_URL` variable |
+| `azure_credentials_json` | `terraform output -raw azure_credentials_json` | `AZURE_CREDENTIALS` secret |
 
-## Verify the Deployment
-
-### Logs
-To watch the real-time application logs (useful during the 15-minute "wake up" cycles):
+## Logging
+To watch the real-time activity (only works when the app is "awake"):
 ```bash
-az containerapp logs show \
-  --name feedcord-app \
-  --resource-group feedcord-rg \
-  --follow
-```
-
-### Manual Trigger
-You can manually wake the app at any time by simply visiting the `container_app_url` in your browser or running:
-```bash
-curl -I $(terraform output -raw container_app_url)
+az containerapp logs show -n feedcord-app -g feedcord-rg --follow
 ```

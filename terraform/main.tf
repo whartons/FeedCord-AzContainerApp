@@ -9,6 +9,10 @@ terraform {
 			source  = "hashicorp/azuread"
 			version = "~> 2.0"
 		}
+		random = {
+			source  = "hashicorp/random"
+			version = "~> 3.0"
+		}
 	}
 }
 
@@ -62,4 +66,6 @@ module "feedcord" {
 	environment_name    = var.environment_name
 	appsettings_json    = var.appsettings_json
 	image_tag           = var.image_tag
+	github_token        = var.github_token
+	github_gist_id      = var.github_gist_id
 }

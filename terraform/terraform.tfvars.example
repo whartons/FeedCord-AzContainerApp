@@ -1,20 +1,25 @@
-# Copy to terraform.tfvars and fill in your values
+# Copy to terraform.tfvars or pass values via -var on the CLI
 
 resource_group_name = "feedcord-rg"
-location            = "eastus"
-
-# Azure Authentication & GitHub OIDC
 subscription_id     = "00000000-0000-0000-0000-000000000000"
 tenant_id           = "00000000-0000-0000-0000-000000000000"
 github_repo         = "your-username/FeedCord-AzContainerApp"
 
-# Azure Resources
-# Azure Resources
+# --- REQUIRED FOR PERSISTENCE ---
+# 1. GitHub Gist ID (Create a SECRET Gist at https://gist.github.com)
+#    - Filename: feed_dump.csv
+#    - Content:  url,isYoutube,lastRunDate
+#    - ID: Copy the long string at the end of the Gist URL
+github_gist_id      = "your_gist_id_here"
+# 2. GitHub Personal Access Token (classic) with 'gist' scope
+github_token        = "your_github_pat_here"
+
+location            = "eastus"
 container_app_name  = "feedcord-app"
 environment_name    = "feedcord-env"
 
-# Application Settings
 # Provide your appsettings.json inline or via a file
+# Note: You can leave this as a dummy config if you plan to use the GitHub Deployment workflow.
 appsettings_json    = "{\"Logging\":{\"LogLevel\":{\"Default\":\"Information\"}}}"
 image_tag           = "latest"
 
@@ -23,5 +28,5 @@ image_tag           = "latest"
 min_replicas        = 0
 max_replicas        = 1
 
-# The HTTP concurrent requests threshold for scaling
-concurrent_requests = 50
+# The HTTP concurrent requests threshold for scaling (pings from the poller trigger scale-up)
+concurrent_requests = 1

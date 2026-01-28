@@ -52,34 +52,44 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
 
 ### Deployment Steps
 
-**Step 1: Run Terraform Locally**
+**Step 1: Setup GitHub persistence**
+1. Generate a [GitHub PAT (classic)](https://github.com/settings/tokens) with the **`gist`** scope.
+2. Create a **Secret Gist** at [gist.github.com](https://gist.github.com/):
+   - **Filename**: `feed_dump.csv`
+   - **Content**: `url,isYoutube,lastRunDate`
+3. Copy the **Gist ID** from the address bar (it is the long alphanumeric string at the end of the URL).
+4. Store the ID and your Personal Access Token safely.
 
-Provision the Azure infrastructure:
+**Step 2: Run Terraform Locally**
+
+Provision the Azure infrastructure and automated Gist:
 
 ```bash
 cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars and add your values
 terraform init
 terraform plan
 terraform apply
 ```
 
-This creates a "Scale-to-Zero" Container App that pulls directly from the official FeedCord repository.
+This creates a "Scale-to-Zero" Container App that pulls directly from the official FeedCord repository and uses a private Gist for free persistent storage.
 
-**Step 2: Update GitHub Secrets & Variables**
+**Step 3: Update GitHub Secrets & Variables**
 
 1. Add `AZURE_CREDENTIALS` as a GitHub secret (using the `azure_credentials_json` Terraform output).
 2. Add the repository variables: `AZURE_RESOURCE_GROUP`, `CONTAINER_APP_NAME`.
-3. Add the `CONTAINER_APP_URL` variable (use the `container_app_url` output from Terraform).
+3. Add the `CONTAINER_APP_URL` variable (use the `container_app_url` output from Terraform). 
 4. Add `FEEDCORD_APPSETTINGS` secret with your complete `appsettings.json`.
 
-**Step 3: Run the Deployment Workflow**
+**Step 4: Run the Deployment Workflow**
 
 Trigger it manually:
 - Go to Actions → "Deploy to Azure Container App" → "Run workflow"
 
-**Step 4: Scheduled Polling**
+**Step 5: Scheduled Polling**
 
-The repository includes a **"Wake FeedCord Poller"** action (`feedcord-keep-alive.yml`). It is scheduled to run every 15 minutes. It pings your app's URL to wake the container, which triggers an immediate RSS poll and then allows the container to shut down again, keeping your costs at $0.00.
+The repository includes a **"Wake FeedCord Poller"** action (`feedcord-keep-alive.yml`). It is scheduled to run every 30 minutes. It pings your app's URL to wake the container, which triggers an immediate RSS poll and then allows the container to shut down again, keeping your costs at $0.00 and your feed state safe in your GitHub Gist.
 
 ---
 ## Stock Readme Begin

@@ -64,3 +64,14 @@ variable "concurrent_requests" {
   type        = number
   default     = 50
 }
+
+variable "github_token" {
+  description = "GitHub Personal Access Token for Gist persistence"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_gist_id" {
+  description = "GitHub Gist ID for storing feed_dump.csv"
+  type        = string
+}

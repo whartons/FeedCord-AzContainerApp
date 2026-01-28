@@ -23,8 +23,10 @@ resource "azurerm_container_app" "feedcord" {
       cpu    = 0.25
       memory = "0.5Gi"
 
-      # Pass the config path as an argument to override the default location
-      args = ["/mnt/config/appsettings-json"]
+      # Ghost Gist Trick: Symlink the persistent state file into the app folder
+      # This allows us to use the upstream image without modification
+      command = ["/bin/sh", "-c"]
+      args    = ["ln -sf /mnt/state/feed_dump.csv /app/feed_dump.csv && dotnet FeedCord.dll /mnt/config/appsettings-json"]
 
       env {
         name  = "ASPNETCORE_URLS"
@@ -35,19 +37,65 @@ resource "azurerm_container_app" "feedcord" {
         name = "secret-vol"
         path = "/mnt/config"
       }
+
+      volume_mounts {
+        name = "shared-data"
+        path = "/mnt/state"
+      }
     }
 
     container {
       name    = "wake-up-server"
-      image   = "busybox:latest"
-      command = ["sh", "-c", "echo 'HTTP/1.1 200 OK\n\nOK' > index.html && httpd -f -p 80"]
-      cpu     = 0.25
-      memory  = "0.5Gi"
+      image   = "alpine:3.18"
+      command = ["/bin/sh", "-c"]
+      args    = [<<-EOT
+        apk add --no-cache curl jq;
+        echo "Syncing down state from Gist $GITHUB_GIST_ID...";
+        curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/gists/$GITHUB_GIST_ID | jq -r '.files["feed_dump.csv"].content' > /shared/feed_dump.csv;
+        if [ ! -f /shared/feed_dump.csv ] || [ "$(cat /shared/feed_dump.csv)" = "null" ]; then echo "url,isYoutube,lastRunDate" > /shared/feed_dump.csv; fi;
+        echo 'HTTP/1.1 200 OK\n\nOK' > index.html;
+        httpd -p 80 -h . &
+        HTTPD_PID=$!;
+        trap "
+          echo 'SIGTERM received. Waiting for FeedCord to persist...';
+          sleep 15;
+          echo 'Syncing up state to Gist...';
+          CONTENT=\$(cat /shared/feed_dump.csv | jq -Rsa .);
+          PAYLOAD=\"{\\\"files\\\": {\\\"feed_dump.csv\\\": {\\\"content\\\": \$CONTENT}}}\";
+          curl -s -X PATCH -H \"Authorization: token \$GITHUB_TOKEN\" -d \"\$PAYLOAD\" https://api.github.com/gists/\$GITHUB_GIST_ID;
+          echo 'Sync complete. Shutting down.';
+          kill \$HTTPD_PID;
+          exit 0;
+        " SIGTERM;
+        wait $HTTPD_PID
+      EOT
+      ]
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name      = "GITHUB_TOKEN"
+        secret_name = "github-token"
+      }
+      env {
+        name      = "GITHUB_GIST_ID"
+        secret_name = "github-gist-id"
+      }
+
+      volume_mounts {
+        name = "shared-data"
+        path = "/shared"
+      }
     }
 
     volume {
       name         = "secret-vol"
       storage_type = "Secret"
+    }
+
+    volume {
+      name         = "shared-data"
+      storage_type = "EmptyDir"
     }
 
     min_replicas = 0
@@ -69,6 +117,16 @@ resource "azurerm_container_app" "feedcord" {
     value = var.appsettings_json
   }
 
+  secret {
+    name  = "github-token"
+    value = var.github_token
+  }
+
+  secret {
+    name  = "github-gist-id"
+    value = var.github_gist_id
+  }
+
   # Map the secret to a specific file inside the volume
   # Note: The 'azure-native' term for this is secretRef, but in azurerm it's handled via the template volume object.
   # However, the azurerm provider (v4.0) handles secret volumes by mapping the secret name to a file with the same name.
@@ -76,11 +134,5 @@ resource "azurerm_container_app" "feedcord" {
 
   identity {
     type = "SystemAssigned"
-  }
-
-  lifecycle {
-    ignore_changes = [
-      secret
-    ]
   }
 }

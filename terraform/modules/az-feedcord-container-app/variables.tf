@@ -25,3 +25,12 @@ variable "concurrent_requests" {
 	type        = number
 	default     = 50
 }
+
+variable "github_token" {
+	type      = string
+	sensitive = true
+}
+
+variable "github_gist_id" {
+	type      = string
+}
