@@ -31,17 +31,17 @@ jobs:
     - name: Deploy to Azure Container Apps
       run: |
         # Use Python to safely process the secret (immune to shell mangling)
-        MINIFIED_SETTINGS=$(python3 -c "import os, json; print(json.dumps(json.loads(os.environ['FEEDCORD_APPSETTINGS'])))")
+        # We write it to a temporary file to avoid shell quoting hell
+        python3 -c "import os, json; print(json.dumps(json.loads(os.environ['FEEDCORD_APPSETTINGS'])))" > appsettings.min.json
 
-        # Update the secret FIRST
-        # Using curly braces and careful quoting to handle complex JSON values correctly
+        # Update the secret using the @file syntax
         az containerapp secret set \
           --name "${CONTAINER_APP_NAME}" \
           --resource-group "${AZURE_RESOURCE_GROUP}" \
-          --secrets "appsettings-json=${MINIFIED_SETTINGS}"
+          --secrets "appsettings-json=@appsettings.min.json"
 
         # THEN trigger update with new image. 
-        # We add a dummy env var with a timestamp to FORCE a new revision so it picks up the new secret.
+        # We add a dummy env var with a timestamp to FORCE a new revision.
         az containerapp update \
           --name "${CONTAINER_APP_NAME}" \
           --resource-group "${AZURE_RESOURCE_GROUP}" \
