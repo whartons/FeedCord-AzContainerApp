@@ -55,11 +55,14 @@ jobs:
           --server $AZURE_CONTAINER_REGISTRY \
           --identity system
 
-        # Update the secret FIRST using environment variable for safe injection
+        # Minify JSON using a here-string (avoiding echo for better security/robustness)
+        MINIFIED_SETTINGS=$(jq -c . <<< "$FEEDCORD_APPSETTINGS")
+
+        # Update the secret FIRST
         az containerapp secret set \
           --name $CONTAINER_APP_NAME \
           --resource-group $AZURE_RESOURCE_GROUP \
-          --secrets "appsettings-json=$FEEDCORD_APPSETTINGS"
+          --secrets "appsettings-json=$MINIFIED_SETTINGS"
 
         # THEN trigger update with new image. 
         # We add a dummy env var with a timestamp to FORCE a new revision so it picks up the new secret.
