@@ -29,20 +29,41 @@ jobs:
         subscription-id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
     - name: Deploy to Azure Container Apps
+      shell: python
       run: |
-        # Use Python to safely process the secret (immune to shell mangling)
-        # We write it to a temporary file for the update command to read
-        python3 -c "import os, json; print(json.dumps(json.loads(os.environ['FEEDCORD_APPSETTINGS'])))" > appsettings.min.json
+        import os
+        import subprocess
+        import json
 
-        # One single command to update both the secret and the container.
-        # This syntax (@file) IS supported by the update command and ensures 
-        # that special characters like '=' are not mangled by the CLI.
-        az containerapp update \
-          --name "${CONTAINER_APP_NAME}" \
-          --resource-group "${AZURE_RESOURCE_GROUP}" \
-          --container-name feedcord \
-          --image "${IMAGE_NAME}" \
-          --set-secrets "appsettings-json=@appsettings.min.json" \
-          --set-env-vars "DEPLOY_TIMESTAMP=$(date +%s)"
+        # Fetch environment variables
+        container_app_name = os.environ['CONTAINER_APP_NAME']
+        resource_group = os.environ['AZURE_RESOURCE_GROUP']
+        image_name = os.environ['IMAGE_NAME']
+        raw_settings = os.environ['FEEDCORD_APPSETTINGS']
+
+        # Minify JSON to ensure it fits comfortably in the secret value
+        minified_settings = json.dumps(json.loads(raw_settings))
+
+        print(f"Updating secrets for {container_app_name}...")
+        # secret set --secrets takes a NAME=VALUE pair. 
+        # By using a list in subprocess.run, we bypass shell parsing entirely.
+        subprocess.run([
+            "az", "containerapp", "secret", "set",
+            "--name", container_app_name,
+            "--resource-group", resource_group,
+            "--secrets", f"appsettings-json={minified_settings}"
+        ], check=True)
+
+        print(f"Updating container and forcing new revision...")
+        # Trigger an update to pull the latest image and pick up the new secret.
+        # We use a timestamp to force the revision.
+        subprocess.run([
+            "az", "containerapp", "update",
+            "--name", container_app_name,
+            "--resource-group", resource_group,
+            "--container-name", "feedcord",
+            "--image", image_name,
+            "--set-env-vars", f"DEPLOY_TIMESTAMP={subprocess.check_output(['date', '+%s']).decode().strip()}"
+        ], check=True)
       env:
         FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}
