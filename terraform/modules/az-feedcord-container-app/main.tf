@@ -23,10 +23,10 @@ resource "azurerm_container_app" "feedcord" {
       cpu    = 0.25
       memory = "0.5Gi"
 
-      # Ghost Gist Trick: Symlink the persistent state file into the app folder
-      # This allows us to use the upstream image without modification
-      command = ["/bin/sh", "-c"]
-      args    = ["ln -sf /mnt/state/feed_dump.csv /app/feed_dump.csv && dotnet FeedCord.dll /mnt/config/appsettings-json"]
+      # Ghost Gist Trick: Symlink everything for maximum compatibility
+      # We cd into /app and symlink BOTH the state file and the config file
+      command = ["/bin/sh"]
+      args    = ["-c", "cd /app && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json appsettings.json && dotnet FeedCord.dll"]
 
       env {
         name  = "ASPNETCORE_URLS"
@@ -134,5 +134,11 @@ resource "azurerm_container_app" "feedcord" {
 
   identity {
     type = "SystemAssigned"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      secret
+    ]
   }
 }

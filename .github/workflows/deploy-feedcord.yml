@@ -41,20 +41,20 @@ jobs:
         image_name = os.environ['IMAGE_NAME']
         raw_settings = os.environ['FEEDCORD_APPSETTINGS']
 
-        # Parse and minify the JSON
-        settings_dict = json.loads(raw_settings)
-        minified_settings = json.dumps(settings_dict, separators=(',', ':'))
+        # Parse and minify the JSON to ensure it's a valid single-line string
+        try:
+            settings_dict = json.loads(raw_settings)
+            minified_settings = json.dumps(settings_dict, separators=(',', ':'))
+        except Exception as e:
+            print(f"Error parsing FEEDCORD_APPSETTINGS: {e}")
+            exit(1)
 
-        # THE FIX: Azure CLI's 'secret set' command splits on spaces.
-        # We replace any space with \u0020 (valid JSON escape sequence).
-        safe_settings = minified_settings.replace(' ', '\\u0020')
-
-        print(f"Updating secret 'appsettings-json'...")
+        print(f"Updating secret 'appsettings-json' from GitHub Secret FEEDCORD_APPSETTINGS...")
         subprocess.run([
             "az", "containerapp", "secret", "set",
             "--name", container_app_name,
             "--resource-group", resource_group,
-            "--secrets", f"appsettings-json={safe_settings}"
+            "--secrets", f"appsettings-json={minified_settings}"
         ], check=True)
 
         print(f"Updating container and forcing new revision...")
@@ -66,7 +66,6 @@ jobs:
             "--resource-group", resource_group,
             "--container-name", "feedcord",
             "--image", image_name,
-            "--command", "/bin/sh -c \"ln -sf /mnt/state/feed_dump.csv /app/feed_dump.csv && dotnet FeedCord.dll /mnt/config/appsettings-json\"",
             "--set-env-vars", f"DEPLOY_TIMESTAMP={subprocess.check_output(['date', '+%s']).decode().strip()}"
         ], check=True)
       env:
