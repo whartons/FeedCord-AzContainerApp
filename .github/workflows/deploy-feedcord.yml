@@ -44,9 +44,17 @@ jobs:
         # Minify JSON to ensure it fits comfortably in the secret value
         minified_settings = json.dumps(json.loads(raw_settings))
 
+        # DEBUG: Verify what is actually being sent to Azure
+        # We print first 100 chars to avoid leaking full secrets in logs
+        print(f"DEBUG: JSON to upload (first 100 chars): {minified_settings[:100]}...")
+
+        # Explicit safety check for the error we keep seeing in logs
+        if '[""]' in minified_settings:
+            print("!!! FATAL ERROR !!!: The JSON still contains an invalid empty string [\"\"].")
+            print("Please fix your GitHub Secret 'FEEDCORD_APPSETTINGS' and provide valid empty arrays [].")
+            exit(1)
+
         print(f"Updating secrets for {container_app_name}...")
-        # secret set --secrets takes a NAME=VALUE pair. 
-        # By using a list in subprocess.run, we bypass shell parsing entirely.
         subprocess.run([
             "az", "containerapp", "secret", "set",
             "--name", container_app_name,
@@ -55,8 +63,6 @@ jobs:
         ], check=True)
 
         print(f"Updating container and forcing new revision...")
-        # Trigger an update to pull the latest image and pick up the new secret.
-        # We use a timestamp to force the revision.
         subprocess.run([
             "az", "containerapp", "update",
             "--name", container_app_name,
