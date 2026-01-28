@@ -56,7 +56,7 @@ After a successful `terraform apply`, you will need these values for your GitHub
 
 | Output | Command to View | Usage |
 | :--- | :--- | :--- |
-| `container_app_url` | `terraform output -raw container_app_url` | Add as `CONTAINER_APP_URL` variable in GitHub. |
+| `container_app_url` | `az containerapp show -n <app-name> -g <rg-name> --query properties.configuration.ingress.fqdn -o tsv` | Add as `CONTAINER_APP_URL` variable in GitHub (Add `https://`). |
 | `azure_credentials_json` | `terraform output -raw azure_credentials_json` | Add as `AZURE_CREDENTIALS` secret in GitHub. |
 
 ## Verify the Deployment

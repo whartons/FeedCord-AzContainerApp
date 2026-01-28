@@ -29,22 +29,22 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
 
 5. **Container App URL** (for the wake-up trigger):
 
-    The Terraform apply step will also output the FQDN of your application.
+    You need the stable "Global URL" for your application (not a revision-specific one). 
     
-    To view this value, run:
+    To view this value via the Azure CLI, run:
     ```bash
-    terraform output -raw container_app_url
+    az containerapp show -n feedcord-app -g feedcord-rg --query properties.configuration.ingress.fqdn -o tsv
     ```
     
     Copy this URL and add it as a GitHub variable (Variables → Actions → New repository variable):
     - Name: `CONTAINER_APP_URL`
-    - Value: Paste the URL from Terraform (e.g. `https://feedcord-app...`)
+    - Value: `https://<YOUR_OUTPUT_URL>` (Make sure to include **https://**)
 
 
 6. **GitHub Repository Variables** (for the deployment workflow):
    - `AZURE_RESOURCE_GROUP` - Your resource group name  
    - `CONTAINER_APP_NAME` - Your container app name
-   - `CONTAINER_APP_URL` - The FQDN of your app (retrieved via `terraform output -raw container_app_url`) (used for the scheduled wake-up trigger)
+   - `CONTAINER_APP_URL` - The Global FQDN of your app (retrieved via the CLI command above) (used for the scheduled wake-up trigger)
 
 . **GitHub Repository Secrets** (for the deployment workflow):
    - `FEEDCORD_APPSETTINGS` - Your complete `appsettings.json` content as a GitHub secret. This contains your RSS feeds, Discord webhook URLs, and other configuration.

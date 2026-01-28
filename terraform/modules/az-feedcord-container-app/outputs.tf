@@ -1,6 +1,6 @@
 
 output "container_app_url" {
-  value = azurerm_container_app.feedcord.latest_revision_fqdn
+  value = azurerm_container_app.feedcord.ingress[0].fqdn
 }
 
 output "container_app_principal_id" {
