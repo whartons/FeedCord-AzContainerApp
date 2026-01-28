@@ -55,8 +55,13 @@ jobs:
           --server $AZURE_CONTAINER_REGISTRY \
           --identity system
 
-        # Minify JSON using a here-string (avoiding echo for better security/robustness)
-        MINIFIED_SETTINGS=$(jq -c . <<< "$FEEDCORD_APPSETTINGS")
+        # Write secret to file safely (quoted 'EOF' prevents shell expansion)
+        cat << 'EOF' > settings.json
+        ${{ secrets.FEEDCORD_APPSETTINGS }}
+        EOF
+
+        # Minify JSON to remove spaces that break the CLI's key=value parsing
+        MINIFIED_SETTINGS=$(jq -c . settings.json)
 
         # Update the secret FIRST
         az containerapp secret set \
