@@ -42,59 +42,36 @@ This folder contains the Terraform configuration to provision the Azure infrastr
 
 ### Resources Created
 - **Resource Group**: Organizes all FeedCord resources.
-- **Azure Container Registry (ACR)**: Stores the FeedCord Docker image.
-- **Container App Environment**: The host environment for the app.
-- **Container App**: Running the FeedCord application.
-- **System-Assigned Managed Identity**: Used by the app to securely pull images from ACR.
+- **Container App Environment**: The serverless host environment for the app.
+- **Container App**: Running the FeedCord application (pulling directly from `qolors/feedcord:latest`).
 - **Federated Identity**: Enables passwordless GitHub Actions login via OIDC.
 
-### Scaling & Performance
-- **Replicas**: Defaults to `min_replicas = 1` and `max_replicas = 1`. This is required because FeedCord is a background worker that needs to be constantly running to poll feeds.
-- **Resources**: Default allocation is 0.25 vCPU and 0.5Gi RAM, which is sufficient for typical RSS polling.
+### Scaling & $0 Cost Strategy
+- **Scale-to-Zero**: Defaults to `min_replicas = 0`. The application will shut down completely when idle to ensure it stays within the **Azure Always Free** grant.
+- **Periodic Triggers**: Since FeedCord is a background poller, it is "woken up" every 15 minutes by a GitHub Action (`feedcord-keep-alive.yml`). This trigger pings the app's URL, causing it to scale up, poll for new feeds, and then scale back down.
+- **Resources**: Default allocation is 0.25 vCPU and 0.5Gi RAM.
 
-### Permissions
-The account running Terraform must have permission to create **Role Assignments** (like User Access Administrator or Owner) to grant the Container App `AcrPull` permissions on the registry.
+## Outputs
+After a successful `terraform apply`, you will need these values for your GitHub Repository configuration:
+
+| Output | Command to View | Usage |
+| :--- | :--- | :--- |
+| `container_app_url` | `terraform output -raw container_app_url` | Add as `CONTAINER_APP_URL` variable in GitHub. |
+| `azure_credentials_json` | `terraform output -raw azure_credentials_json` | Add as `AZURE_CREDENTIALS` secret in GitHub. |
 
 ## Verify the Deployment
-To check the deployment status or logs:
-```bash
-# Get the URL of your app
-terraform output container_app_url
-
-# Check the principal ID of the app identity
-terraform output container_app_principal_id
-```
-
-## Testing & Troubleshooting
-
-### Ingress (Inbound)
-To verify the app is reachable from the internet:
-1. Get the URL: `terraform output container_app_url`.
-2. Visit the URL or use `curl -I <URL>`.
-   - *Note*: FeedCord is a background service and may not serve a web page, but the URL should be reachable if ingress is enabled.
-
-### Egress (Outbound)
-To test if the container can reach external services:
-1. **Interactive Console** (Targeting the `debugger` container which has `curl` pre-installed):
-   ```bash
-   # Add --container debugger to specify the sidecar
-   az containerapp exec \
-     --name feedcord-app \
-     --resource-group feedcord-rg \
-     --container debugger \
-     --command "/bin/sh"
-   ```
-2. **Test Connectivity**:
-   Inside the container, try to reach an external site:
-   ```sh
-   curl -I https://discord.com
-   ```
 
 ### Logs
-To watch the real-time application logs:
+To watch the real-time application logs (useful during the 15-minute "wake up" cycles):
 ```bash
 az containerapp logs show \
   --name feedcord-app \
   --resource-group feedcord-rg \
   --follow
+```
+
+### Manual Trigger
+You can manually wake the app at any time by simply visiting the `container_app_url` in your browser or running:
+```bash
+curl -I $(terraform output -raw container_app_url)
 ```

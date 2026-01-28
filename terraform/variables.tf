@@ -24,10 +24,6 @@ variable "github_repo" {
   type        = string
 }
 
-variable "acr_name" {
-  description = "Name of the Azure Container Registry to create"
-  type        = string
-}
 
 variable "container_app_name" {
   description = "Name of the Azure Container App to create"

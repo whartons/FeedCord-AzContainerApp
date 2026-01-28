@@ -3,14 +3,6 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-resource "azurerm_container_registry" "acr" {
-  name                = var.acr_name
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  sku                 = "Basic"
-  admin_enabled       = false
-}
-
 resource "azurerm_container_app_environment" "env" {
   name                = var.environment_name
   resource_group_name = azurerm_resource_group.rg.name
@@ -26,9 +18,8 @@ resource "azurerm_container_app" "feedcord" {
   template {
     container {
       name   = "feedcord"
-      # Use a reliable Microsoft placeholder image (Port 80) to ensure fast provisioning.
-      # The actual app image will be deployed by GitHub Actions.
-      image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+      # Pointing directly to upstream Docker Hub image to save ACR costs
+      image  = "qolors/feedcord:latest"
       cpu    = 0.25
       memory = "0.5Gi"
 
@@ -49,28 +40,12 @@ resource "azurerm_container_app" "feedcord" {
       }
     }
 
-    # Debugger Sidecar: Provides curl and a shell for testing egress/ingress
-    # before the first GitHub Action deployment.
-    container {
-      name    = "debugger"
-      image   = "alpine:latest"
-      cpu     = 0.25
-      memory  = "0.5Gi"
-      command = ["sh", "-c", "apk add --no-cache curl && sleep infinity"]
-
-      volume_mounts {
-        name     = "secret-vol"
-        path     = "/app/config/appsettings.json"
-        sub_path = "appsettings-json"
-      }
-    }
-
     volume {
       name         = "secret-vol"
       storage_type = "Secret"
     }
 
-    min_replicas = 1
+    min_replicas = 0
     max_replicas = 1
   }
 
@@ -100,16 +75,7 @@ resource "azurerm_container_app" "feedcord" {
 
   lifecycle {
     ignore_changes = [
-      template[0].container[0].image,
-      registry,
       secret
     ]
   }
-}
-
-resource "azurerm_role_assignment" "acr_pull" {
-  scope                = azurerm_container_registry.acr.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_container_app.feedcord.identity[0].principal_id
-  depends_on           = [azurerm_container_app.feedcord]
 }

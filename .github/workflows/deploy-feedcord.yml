@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_REGISTRY: ${{ vars.ACR_NAME }}.azurecr.io
-  # Map repository variables into env so steps can use simple shell vars
-  ACR_NAME: ${{ vars.ACR_NAME }}
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
-  IMAGE_NAME: feedcord
+  IMAGE_NAME: qolors/feedcord:latest
 
 jobs:
   build-and-deploy:
@@ -31,30 +28,8 @@ jobs:
         tenant-id: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
         subscription-id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
-    - name: Azure CLI - Login to ACR
-      run: |
-        az acr login --name $ACR_NAME
-
-    - name: Pull upstream Docker image
-      run: |
-        docker pull qolors/feedcord:latest
-
-    - name: Client tag image
-      run: |
-        docker tag qolors/feedcord:latest ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
-    - name: Push Docker image to ACR
-      run: |
-        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
     - name: Deploy to Azure Container Apps
       run: |
-        az containerapp registry set \
-          --name $CONTAINER_APP_NAME \
-          --resource-group $AZURE_RESOURCE_GROUP \
-          --server $AZURE_CONTAINER_REGISTRY \
-          --identity system
-
         # Use Python to safely process the secret (immune to shell mangling)
         MINIFIED_SETTINGS=$(python3 -c "import os, json; print(json.dumps(json.loads(os.environ['FEEDCORD_APPSETTINGS'])))")
 
@@ -70,7 +45,7 @@ jobs:
           --name $CONTAINER_APP_NAME \
           --resource-group $AZURE_RESOURCE_GROUP \
           --container-name feedcord \
-          --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest \
+          --image $IMAGE_NAME \
           --set-env-vars "DEPLOY_TIMESTAMP=$(date +%s)"
       env:
         FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}

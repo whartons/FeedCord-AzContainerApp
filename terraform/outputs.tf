@@ -1,7 +1,3 @@
-output "acr_login_server" {
-  description = "The ACR login server (e.g. myregistry.azurecr.io)"
-  value       = module.feedcord.acr_login_server
-}
 
 output "container_app_url" {
   description = "FQDN of the deployed Container App"

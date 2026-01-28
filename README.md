@@ -27,13 +27,26 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
     - Name: `AZURE_CREDENTIALS`
     - Value: Paste the JSON output from Terraform
 
+5. **Container App URL** (for the wake-up trigger):
 
-5. **GitHub Repository Variables** (for the deployment workflow):
-   - `ACR_NAME` - Your Azure Container Registry name
+    The Terraform apply step will also output the FQDN of your application.
+    
+    To view this value, run:
+    ```bash
+    terraform output -raw container_app_url
+    ```
+    
+    Copy this URL and add it as a GitHub variable (Variables → Actions → New repository variable):
+    - Name: `CONTAINER_APP_URL`
+    - Value: Paste the URL from Terraform (e.g. `https://feedcord-app...`)
+
+
+6. **GitHub Repository Variables** (for the deployment workflow):
    - `AZURE_RESOURCE_GROUP` - Your resource group name  
    - `CONTAINER_APP_NAME` - Your container app name
+   - `CONTAINER_APP_URL` - The FQDN of your app (retrieved via `terraform output -raw container_app_url`) (used for the scheduled wake-up trigger)
 
-6. **GitHub Repository Secrets** (for the deployment workflow):
+. **GitHub Repository Secrets** (for the deployment workflow):
    - `FEEDCORD_APPSETTINGS` - Your complete `appsettings.json` content as a GitHub secret. This contains your RSS feeds, Discord webhook URLs, and other configuration.
    - `AZURE_CREDENTIALS` - The JSON output from Terraform's `azure_credentials_json`.
 
@@ -41,7 +54,7 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
 
 **Step 1: Run Terraform Locally**
 
-First, provision the Azure infrastructure using Terraform:
+Provision the Azure infrastructure:
 
 ```bash
 cd terraform
@@ -50,23 +63,23 @@ terraform plan
 terraform apply
 ```
 
-This creates your infrastructure and deploys a temporary "Hello World" placeholder. This ensures the infrastructure is ready before the application deployment. See [terraform/README.md](terraform/README.md) for detailed configuration options.
+This creates a "Scale-to-Zero" Container App that pulls directly from the official FeedCord repository.
 
-**Step 2: Update GitHub Secrets**
+**Step 2: Update GitHub Secrets & Variables**
 
-Before running the deployment workflow, add the GitHub Actions credentials and configuration:
-
-1. Add `AZURE_CREDENTIALS` as a GitHub secret (using the `azure_credentials_json` Terraform output)
-
-3. Add the repository variables: `ACR_NAME`, `AZURE_RESOURCE_GROUP`, `CONTAINER_APP_NAME`
-4. Add `FEEDCORD_APPSETTINGS` secret with your complete `appsettings.json` content
+1. Add `AZURE_CREDENTIALS` as a GitHub secret (using the `azure_credentials_json` Terraform output).
+2. Add the repository variables: `AZURE_RESOURCE_GROUP`, `CONTAINER_APP_NAME`.
+3. Add the `CONTAINER_APP_URL` variable (use the `container_app_url` output from Terraform).
+4. Add `FEEDCORD_APPSETTINGS` secret with your complete `appsettings.json`.
 
 **Step 3: Run the Deployment Workflow**
 
-The `deploy-feedcord.yml` workflow pulls the official FeedCord Docker image, pushes it to your ACR, and deploys it to the Container App.
-
 Trigger it manually:
-- Go to Actions → "Build and Deploy FeedCord" → "Run workflow"
+- Go to Actions → "Deploy to Azure Container App" → "Run workflow"
+
+**Step 4: Scheduled Polling**
+
+The repository includes a **"Wake FeedCord Poller"** action (`feedcord-keep-alive.yml`). It is scheduled to run every 15 minutes. It pings your app's URL to wake the container, which triggers an immediate RSS poll and then allows the container to shut down again, keeping your costs at $0.00.
 
 ---
 ## Stock Readme Begin

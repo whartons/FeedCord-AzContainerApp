@@ -58,7 +58,6 @@ module "feedcord" {
 
 	resource_group_name = var.resource_group_name
 	location            = var.location
-	acr_name            = var.acr_name
 	container_app_name  = var.container_app_name
 	environment_name    = var.environment_name
 	appsettings_json    = var.appsettings_json

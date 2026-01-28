@@ -9,7 +9,7 @@ tenant_id           = "00000000-0000-0000-0000-000000000000"
 github_repo         = "your-username/FeedCord-AzContainerApp"
 
 # Azure Resources
-acr_name            = "feedcordacr"
+# Azure Resources
 container_app_name  = "feedcord-app"
 environment_name    = "feedcord-env"
 
@@ -19,8 +19,8 @@ appsettings_json    = "{\"Logging\":{\"LogLevel\":{\"Default\":\"Information\"}}
 image_tag           = "latest"
 
 # Autoscaling defaults (can be overridden in terraform.tfvars)
-# FeedCord usually requires min_replicas = 1 to continuously poll.
-min_replicas        = 1
+# Set min_replicas to 0 for $0 cost (scales to zero when idle)
+min_replicas        = 0
 max_replicas        = 1
 
 # The HTTP concurrent requests threshold for scaling
