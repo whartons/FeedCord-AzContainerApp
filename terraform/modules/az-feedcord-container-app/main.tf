@@ -23,10 +23,8 @@ resource "azurerm_container_app" "feedcord" {
       cpu    = 0.25
       memory = "0.5Gi"
 
-      env {
-        name        = "APPCONFIG_JSON"
-        secret_name = "appsettings-json"
-      }
+      # Pass the config path as an argument to override the default location
+      args = ["/mnt/config/appsettings-json"]
 
       env {
         name  = "ASPNETCORE_URLS"
@@ -34,9 +32,8 @@ resource "azurerm_container_app" "feedcord" {
       }
 
       volume_mounts {
-        name     = "secret-vol"
-        path     = "/app/config/appsettings.json"
-        sub_path = "appsettings-json"
+        name = "secret-vol"
+        path = "/mnt/config"
       }
     }
 

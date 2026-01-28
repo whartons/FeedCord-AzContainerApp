@@ -69,12 +69,14 @@ jobs:
 
         print(f"Updating container and forcing new revision...")
         # Trigger an update to pull the latest image and pick up the new secret.
+        # We explicitly pass the --args to match the 'Clean Mount' strategy in Terraform.
         subprocess.run([
             "az", "containerapp", "update",
             "--name", container_app_name,
             "--resource-group", resource_group,
             "--container-name", "feedcord",
             "--image", image_name,
+            "--args", "/mnt/config/appsettings-json",
             "--set-env-vars", f"DEPLOY_TIMESTAMP={subprocess.check_output(['date', '+%s']).decode().strip()}"
         ], check=True)
       env:
