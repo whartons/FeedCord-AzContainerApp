@@ -43,8 +43,9 @@ resource "azurerm_container_app" "feedcord" {
       }
 
       volume_mounts {
-        name = "appsettings-vol"
-        path = "/app/config"
+        name     = "secret-vol"
+        path     = "/app/config/appsettings.json"
+        sub_path = "appsettings-json"
       }
     }
 
@@ -56,31 +57,16 @@ resource "azurerm_container_app" "feedcord" {
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["sh", "-c", "apk add --no-cache curl && sleep infinity"]
-    }
-
-    init_container {
-      name   = "config-setup"
-      image  = "alpine:latest"
-      command = ["sh", "-c", "cp /mnt/secrets/appsettings-json /app/config/appsettings.json"]
 
       volume_mounts {
-        name = "secret-vol"
-        path = "/mnt/secrets"
-      }
-
-      volume_mounts {
-        name = "appsettings-vol"
-        path = "/app/config"
+        name     = "secret-vol"
+        path     = "/app/config/appsettings.json"
+        sub_path = "appsettings-json"
       }
     }
 
     volume {
-      name = "appsettings-vol"
-      storage_type = "EmptyDir"
-    }
-
-    volume {
-      name = "secret-vol"
+      name         = "secret-vol"
       storage_type = "Secret"
     }
 
