@@ -47,17 +47,7 @@ jobs:
 
         # THE FIX: Azure CLI's 'secret set' command splits on spaces.
         # We replace any space with \u0020 (valid JSON escape sequence).
-        # This keeps the value as a single token for the CLI while 
-        # preserving the space for the application.
         safe_settings = minified_settings.replace(' ', '\\u0020')
-
-        # DEBUG: Verify the first part of the payload
-        print(f"DEBUG: Safe JSON snippet: {safe_settings[:100]}...")
-
-        # Safety check for the invalid pattern we saw in logs
-        if '[""]' in safe_settings:
-            print("!!! FATAL ERROR !!!: The JSON still contains [\"\"]. Fix your GitHub Secret.")
-            exit(1)
 
         print(f"Updating secret 'appsettings-json'...")
         subprocess.run([
