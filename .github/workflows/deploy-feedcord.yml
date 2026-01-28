@@ -61,11 +61,13 @@ jobs:
           --resource-group $AZURE_RESOURCE_GROUP \
           --secrets "appsettings-json=$FEEDCORD_APPSETTINGS"
 
-        # THEN trigger update with new image to create a new revision using the new secret
+        # THEN trigger update with new image. 
+        # We add a dummy env var with a timestamp to FORCE a new revision so it picks up the new secret.
         az containerapp update \
           --name $CONTAINER_APP_NAME \
           --resource-group $AZURE_RESOURCE_GROUP \
           --container-name feedcord \
-          --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest
+          --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest \
+          --set-env-vars "DEPLOY_TIMESTAMP=$(date +%s)"
       env:
         FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}
