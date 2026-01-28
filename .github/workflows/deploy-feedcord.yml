@@ -31,22 +31,18 @@ jobs:
     - name: Deploy to Azure Container Apps
       run: |
         # Use Python to safely process the secret (immune to shell mangling)
-        # We write it to a temporary file to avoid shell quoting hell
+        # We write it to a temporary file for the update command to read
         python3 -c "import os, json; print(json.dumps(json.loads(os.environ['FEEDCORD_APPSETTINGS'])))" > appsettings.min.json
 
-        # Update the secret using the @file syntax
-        az containerapp secret set \
-          --name "${CONTAINER_APP_NAME}" \
-          --resource-group "${AZURE_RESOURCE_GROUP}" \
-          --secrets "appsettings-json=@appsettings.min.json"
-
-        # THEN trigger update with new image. 
-        # We add a dummy env var with a timestamp to FORCE a new revision.
+        # One single command to update both the secret and the container.
+        # This syntax (@file) IS supported by the update command and ensures 
+        # that special characters like '=' are not mangled by the CLI.
         az containerapp update \
           --name "${CONTAINER_APP_NAME}" \
           --resource-group "${AZURE_RESOURCE_GROUP}" \
           --container-name feedcord \
           --image "${IMAGE_NAME}" \
+          --set-secrets "appsettings-json=@appsettings.min.json" \
           --set-env-vars "DEPLOY_TIMESTAMP=$(date +%s)"
       env:
         FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}
