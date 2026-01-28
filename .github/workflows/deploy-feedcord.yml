@@ -34,18 +34,19 @@ jobs:
         MINIFIED_SETTINGS=$(python3 -c "import os, json; print(json.dumps(json.loads(os.environ['FEEDCORD_APPSETTINGS'])))")
 
         # Update the secret FIRST
+        # Using curly braces and careful quoting to handle complex JSON values correctly
         az containerapp secret set \
-          --name $CONTAINER_APP_NAME \
-          --resource-group $AZURE_RESOURCE_GROUP \
-          --secrets "appsettings-json=$MINIFIED_SETTINGS"
+          --name "${CONTAINER_APP_NAME}" \
+          --resource-group "${AZURE_RESOURCE_GROUP}" \
+          --secrets "appsettings-json=${MINIFIED_SETTINGS}"
 
         # THEN trigger update with new image. 
         # We add a dummy env var with a timestamp to FORCE a new revision so it picks up the new secret.
         az containerapp update \
-          --name $CONTAINER_APP_NAME \
-          --resource-group $AZURE_RESOURCE_GROUP \
+          --name "${CONTAINER_APP_NAME}" \
+          --resource-group "${AZURE_RESOURCE_GROUP}" \
           --container-name feedcord \
-          --image $IMAGE_NAME \
+          --image "${IMAGE_NAME}" \
           --set-env-vars "DEPLOY_TIMESTAMP=$(date +%s)"
       env:
         FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}
