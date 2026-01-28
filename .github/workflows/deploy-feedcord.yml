@@ -6,7 +6,7 @@ on:
 env:
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
-  IMAGE_NAME: qolors/feedcord:latest
+  IMAGE_NAME: ghcr.io/whartons/feedcord:latest
 
 jobs:
   build-and-deploy:

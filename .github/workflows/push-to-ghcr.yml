@@ -36,3 +36,22 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+  mirror-alpine:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Pull and Push Alpine
+        run: |
+          docker pull alpine:3.18
+          docker tag alpine:3.18 ${{ env.REGISTRY }}/whartons/alpine:3.18
+          docker push ${{ env.REGISTRY }}/whartons/alpine:3.18

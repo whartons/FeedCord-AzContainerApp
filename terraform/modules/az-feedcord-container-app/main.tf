@@ -46,7 +46,7 @@ resource "azurerm_container_app" "feedcord" {
 
     container {
       name    = "wake-up-server"
-      image   = "public.ecr.aws/docker/library/alpine:3.18"
+      image   = "ghcr.io/whartons/alpine:3.18"
       command = ["/bin/sh", "-c"]
       args    = [replace(<<-EOT
         set -x
