@@ -37,6 +37,14 @@ resource "azurerm_container_app" "feedcord" {
       }
     }
 
+    container {
+      name    = "wake-up-server"
+      image   = "busybox:latest"
+      command = ["sh", "-c", "echo 'HTTP/1.1 200 OK\n\nOK' > index.html && httpd -f -p 80"]
+      cpu     = 0.25
+      memory  = "0.5Gi"
+    }
+
     volume {
       name         = "secret-vol"
       storage_type = "Secret"
