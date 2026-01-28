@@ -55,17 +55,17 @@ jobs:
           --server $AZURE_CONTAINER_REGISTRY \
           --identity system
 
-        # Trigger update with new image
+        # Update the secret FIRST using environment variable for safe injection
+        az containerapp secret set \
+          --name $CONTAINER_APP_NAME \
+          --resource-group $AZURE_RESOURCE_GROUP \
+          --secrets "appsettings-json=$FEEDCORD_APPSETTINGS"
+
+        # THEN trigger update with new image to create a new revision using the new secret
         az containerapp update \
           --name $CONTAINER_APP_NAME \
           --resource-group $AZURE_RESOURCE_GROUP \
           --container-name feedcord \
           --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest
-
-        # Update the secret separately using environment variable for safe injection
-        az containerapp secret set \
-          --name $CONTAINER_APP_NAME \
-          --resource-group $AZURE_RESOURCE_GROUP \
-          --secrets "appsettings-json=$FEEDCORD_APPSETTINGS"
       env:
         FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}
