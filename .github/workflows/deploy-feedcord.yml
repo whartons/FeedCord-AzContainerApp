@@ -35,12 +35,16 @@ jobs:
       run: |
         az acr login --name $ACR_NAME
 
-    - name: Build and push container image with curl
+    - name: Pull upstream Docker image
       run: |
-        docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest - <<EOF
-        FROM qolors/feedcord:latest
-        RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-        EOF
+        docker pull qolors/feedcord:latest
+
+    - name: Client tag image
+      run: |
+        docker tag qolors/feedcord:latest ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+    - name: Push Docker image to ACR
+      run: |
         docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
     - name: Deploy to Azure Container Apps
@@ -55,6 +59,7 @@ jobs:
         az containerapp update \
           --name $CONTAINER_APP_NAME \
           --resource-group $AZURE_RESOURCE_GROUP \
+          --container-name feedcord \
           --image $AZURE_CONTAINER_REGISTRY/$IMAGE_NAME:latest
 
         # Update the secret separately using environment variable for safe injection
