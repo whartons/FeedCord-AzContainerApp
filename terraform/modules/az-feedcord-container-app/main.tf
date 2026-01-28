@@ -18,15 +18,15 @@ resource "azurerm_container_app" "feedcord" {
   template {
     container {
       name   = "feedcord"
-      # Pointing directly to upstream Docker Hub image to save ACR costs
-      image  = "qolors/feedcord:latest"
+      # Pointing to GHCR to avoid Docker Hub rate limits
+      image  = "ghcr.io/whartons/feedcord:latest"
       cpu    = 0.25
       memory = "0.5Gi"
 
       # Ghost Gist Trick: Symlink everything for maximum compatibility
-      # We cd into /app and symlink BOTH the state file and the config file
+      # The app expects config at /app/config/appsettings.json
       command = ["/bin/sh"]
-      args    = ["-c", "cd /app && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json appsettings.json && dotnet FeedCord.dll"]
+      args    = ["-c", "cd /app && mkdir -p config && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json config/appsettings.json && dotnet FeedCord.dll"]
 
       env {
         name  = "ASPNETCORE_URLS"
@@ -46,30 +46,50 @@ resource "azurerm_container_app" "feedcord" {
 
     container {
       name    = "wake-up-server"
-      image   = "alpine:3.18"
+      image   = "public.ecr.aws/docker/library/alpine:3.18"
       command = ["/bin/sh", "-c"]
-      args    = [<<-EOT
-        apk add --no-cache curl jq;
-        echo "Syncing down state from Gist $GITHUB_GIST_ID...";
-        curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/gists/$GITHUB_GIST_ID | jq -r '.files["feed_dump.csv"].content' > /shared/feed_dump.csv;
-        if [ ! -f /shared/feed_dump.csv ] || [ "$(cat /shared/feed_dump.csv)" = "null" ]; then echo "url,isYoutube,lastRunDate" > /shared/feed_dump.csv; fi;
-        echo 'HTTP/1.1 200 OK\n\nOK' > index.html;
-        httpd -p 80 -h . &
-        HTTPD_PID=$!;
-        trap "
-          echo 'SIGTERM received. Waiting for FeedCord to persist...';
-          sleep 15;
-          echo 'Syncing up state to Gist...';
-          CONTENT=\$(cat /shared/feed_dump.csv | jq -Rsa .);
-          PAYLOAD=\"{\\\"files\\\": {\\\"feed_dump.csv\\\": {\\\"content\\\": \$CONTENT}}}\";
-          curl -s -X PATCH -H \"Authorization: token \$GITHUB_TOKEN\" -d \"\$PAYLOAD\" https://api.github.com/gists/\$GITHUB_GIST_ID;
-          echo 'Sync complete. Shutting down.';
-          kill \$HTTPD_PID;
-          exit 0;
-        " SIGTERM;
-        wait $HTTPD_PID
+      args    = [replace(<<-EOT
+        set -x
+        apk add --no-cache curl jq
+
+        sync_to_gist() {
+          echo "=== Syncing to Gist at $(date) ==="
+          if [ -s /shared/feed_dump.csv ]; then
+            CONTENT=$(jq -Rsa . /shared/feed_dump.csv)
+            echo '{"files":{"feed_dump.csv":{"content":'$CONTENT'}}}' > /shared/payload.json
+            curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" -d @/shared/payload.json -w "%%{http_code}" https://api.github.com/gists/$GITHUB_GIST_ID > /shared/up_code.txt
+            UP_CODE=$(cat /shared/up_code.txt)
+            echo "Sync result: HTTP $UP_CODE"
+          else
+            echo 'No CSV file found'
+          fi
+        }
+
+        trap sync_to_gist SIGTERM
+
+        echo "Syncing down from Gist..."
+        curl -s -H "Authorization: token $GITHUB_TOKEN" -w "%%{http_code}" -o /shared/gist_body.json https://api.github.com/gists/$GITHUB_GIST_ID > /shared/gist_code.txt
+        HTTP_CODE=$(cat /shared/gist_code.txt)
+        if [ "$HTTP_CODE" = "200" ]; then
+          jq -r '.files["feed_dump.csv"].content' /shared/gist_body.json > /shared/feed_dump.csv
+          echo "Download OK"
+        else
+          echo "Download failed: $HTTP_CODE"
+        fi
+        if [ ! -s /shared/feed_dump.csv ]; then
+          echo "url,isYoutube,lastRunDate" > /shared/feed_dump.csv
+        fi
+        echo 'OK' > index.html
+        busybox httpd -p 80 -h . &
+        echo 'Sidecar ready - starting periodic sync loop'
+        
+        while true; do
+          sync_to_gist
+          sleep 60 &
+          wait $!
+        done
       EOT
-      ]
+      , "\r\n", "\n")]
       cpu    = 0.25
       memory = "0.5Gi"
 
