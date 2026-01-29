@@ -59,6 +59,13 @@ This repository includes Terraform configuration to deploy FeedCord to Azure Con
    - **Content**: `url,isYoutube,lastRunDate`
 3. Copy the **Gist ID** from the address bar (it is the long alphanumeric string at the end of the URL).
 4. Store the ID and your Personal Access Token safely.
+ 
+ **Step 1.5: Build and Push Images**
+ 
+ To avoid Docker Hub rate limits, we use GitHub Container Registry (GHCR). 
+ 
+ 1. Go to Actions → "Build and Push to GHCR" → "Run workflow".
+ 2. Wait for this to complete. It will push `feedcord` and mirror `alpine` to your private registry.
 
 **Step 2: Run Terraform Locally**
 

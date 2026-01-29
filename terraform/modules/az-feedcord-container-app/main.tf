@@ -26,7 +26,7 @@ resource "azurerm_container_app" "feedcord" {
       # Ghost Gist Trick: Symlink everything for maximum compatibility
       # The app expects config at /app/config/appsettings.json
       command = ["/bin/sh"]
-      args    = ["-c", "cd /app && mkdir -p config && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json config/appsettings.json && dotnet FeedCord.dll"]
+      args    = ["-c", "cd /app && mkdir -p config && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json config/appsettings.json && exec dotnet FeedCord.dll"]
 
       env {
         name  = "ASPNETCORE_URLS"
@@ -65,7 +65,7 @@ resource "azurerm_container_app" "feedcord" {
           fi
         }
 
-        trap sync_to_gist SIGTERM
+        trap "sleep 10; sync_to_gist" SIGTERM
 
         echo "Syncing down from Gist..."
         curl -s -H "Authorization: token $GITHUB_TOKEN" -w "%%{http_code}" -o /shared/gist_body.json https://api.github.com/gists/$GITHUB_GIST_ID > /shared/gist_code.txt

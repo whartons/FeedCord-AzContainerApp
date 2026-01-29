@@ -45,7 +45,7 @@ This folder contains the Terraform configuration to provision the Azure infrastr
 ### Resources Created
 - **Resource Group**: Organizes all FeedCord resources.
 - **Container App Environment**: The serverless host environment for the app.
-- **Container App**: Running the FeedCord application (pulling directly from `qolors/feedcord:latest`).
+- **Container App**: Running the FeedCord application (pulling from your private `ghcr.io` registry).
 - **Federated Identity**: Enables passwordless GitHub Actions login via OIDC.
 
 ### The "Ghost Gist" Persistence ($0)
