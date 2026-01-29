@@ -6,6 +6,16 @@
 
 This repository includes Terraform configuration to deploy FeedCord to Azure Container Apps.
 
+### Non-Invasive Architecture
+**Note:** The core [FeedCord application code](https://github.com/Qolors/FeedCord) in this repository is **100% stock and unmodified**. 
+
+All customizations for the zero-cost architecture (Gist synchronization, persistence, scale-to-zero logic, and deduplication) are implemented externally via:
+1.  **Terraform Sidecars**: The `wake-up-server` handles Gist sync and CSV deduplication.
+2.  **Container Arguments**: We inject `exec` and symlinks at runtime via the Terraform container definition.
+3.  **GitHub Workflows**: We handle image building, rate-limit avoidance, and **deployable configuration injection** (passing `appsettings.json` via secrets) via CI/CD.
+
+This ensures you are running the genuine FeedCord experience, just wrapped in a cost-optimized cloud infrastructure.
+
 ### Prerequisites
 
 1. **Azure CLI** - Install from [microsoft.com](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
