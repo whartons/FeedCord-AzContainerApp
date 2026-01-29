@@ -55,6 +55,10 @@ resource "azurerm_container_app" "feedcord" {
         sync_to_gist() {
           echo "=== Syncing to Gist at $(date) ==="
           if [ -s /shared/feed_dump.csv ]; then
+            # Deduplicate CSV: Filter out header, keep last entry per URL, then prepend header
+            awk -F, '$1!="url"{lines[$1]=$0} END {print "url,isYoutube,lastRunDate"; for (l in lines) print lines[l]}' /shared/feed_dump.csv > /shared/feed_dump_clean.csv
+            mv /shared/feed_dump_clean.csv /shared/feed_dump.csv
+            
             CONTENT=$(jq -Rsa . /shared/feed_dump.csv)
             echo '{"files":{"feed_dump.csv":{"content":'$CONTENT'}}}' > /shared/payload.json
             curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" -d @/shared/payload.json -w "%%{http_code}" https://api.github.com/gists/$GITHUB_GIST_ID > /shared/up_code.txt
