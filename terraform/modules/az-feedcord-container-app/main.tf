@@ -26,7 +26,7 @@ resource "azurerm_container_app" "feedcord" {
       # Ghost Gist Trick: Symlink everything for maximum compatibility
       # The app expects config at /app/config/appsettings.json
       command = ["/bin/sh"]
-      args    = ["-c", "cd /app && mkdir -p config && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json config/appsettings.json && exec dotnet FeedCord.dll"]
+      args    = ["-c", "echo 'Waiting for sidecar...' && while [ ! -f /mnt/state/ready ]; do sleep 1; done && echo 'Sidecar ready!' && cd /app && mkdir -p config && ln -sf /mnt/state/feed_dump.csv feed_dump.csv && ln -sf /mnt/config/appsettings-json config/appsettings.json && exec dotnet FeedCord.dll"]
 
       env {
         name  = "ASPNETCORE_URLS"
@@ -83,6 +83,9 @@ resource "azurerm_container_app" "feedcord" {
         if [ ! -s /shared/feed_dump.csv ]; then
           echo "url,isYoutube,lastRunDate" > /shared/feed_dump.csv
         fi
+        
+        # Signal that Gist download is complete and file is ready
+        touch /shared/ready
         echo 'OK' > index.html
         busybox httpd -p 80 -h . &
         echo 'Sidecar ready - starting periodic sync loop'
