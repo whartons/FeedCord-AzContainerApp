@@ -90,7 +90,7 @@ terraform plan
 terraform apply
 ```
 
-This creates a "Scale-to-Zero" Container App that pulls directly from the official FeedCord repository and uses a private Gist for free persistent storage.
+This creates a "Scale-to-Zero" Container App that pulls from your private GitHub Container Registry (mirrored from the official repo) and uses a private Gist for free persistent storage.
 
 **Step 3: Update GitHub Secrets & Variables**
 

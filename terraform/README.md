@@ -12,6 +12,7 @@ This folder contains the Terraform configuration to provision the Azure infrastr
   - **Content**: `url,isYoutube,lastRunDate` (copy this exact line)
   - **Visibility**: Secret
   - **Gist ID**: After creating, copy the long alphanumeric string from the end of the URL (e.g., `https://gist.github.com/user/a1b2c3d4...` -> the ID is `a1b2c3d4...`).
+- **Container Registry**: You must run the **"Build and Push to GHCR"** workflow in GitHub Actions (manually dispatch it) *before* running Terraform. This ensures the `ghcr.io` images exist.
 
 ## Quickstart
 
