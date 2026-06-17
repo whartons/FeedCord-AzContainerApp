@@ -1,0 +1,72 @@
+name: Deploy to Azure Container App
+
+on:
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
+  IMAGE_NAME: ghcr.io/whartons/feedcord:latest
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # Required for requesting the JWT
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        # We process the JSON secret to extract individual values for OIDC login
+        client-id: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+        tenant-id: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+        subscription-id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+
+    - name: Deploy to Azure Container Apps
+      shell: python
+      run: |
+        import os
+        import subprocess
+        import json
+
+        # Fetch environment variables
+        container_app_name = os.environ['CONTAINER_APP_NAME']
+        resource_group = os.environ['AZURE_RESOURCE_GROUP']
+        image_name = os.environ['IMAGE_NAME']
+        raw_settings = os.environ['FEEDCORD_APPSETTINGS']
+
+        # Parse and minify the JSON to ensure it's a valid single-line string
+        try:
+            settings_dict = json.loads(raw_settings)
+            minified_settings = json.dumps(settings_dict, separators=(',', ':'))
+        except Exception as e:
+            print(f"Error parsing FEEDCORD_APPSETTINGS: {e}")
+            exit(1)
+
+        print(f"Updating secret 'appsettings-json' from GitHub Secret FEEDCORD_APPSETTINGS...")
+        subprocess.run([
+            "az", "containerapp", "secret", "set",
+            "--name", container_app_name,
+            "--resource-group", resource_group,
+            "--secrets", f"appsettings-json={minified_settings}"
+        ], check=True)
+
+        print(f"Updating container and forcing new revision...")
+        # Trigger an update to pull the latest image and pick up the new secret.
+        # We explicitly pass the --args to match the 'Clean Mount' strategy in Terraform.
+        subprocess.run([
+            "az", "containerapp", "update",
+            "--name", container_app_name,
+            "--resource-group", resource_group,
+            "--container-name", "feedcord",
+            "--image", image_name,
+            "--set-env-vars", f"DEPLOY_TIMESTAMP={subprocess.check_output(['date', '+%s']).decode().strip()}"
+        ], check=True)
+      env:
+        FEEDCORD_APPSETTINGS: ${{ secrets.FEEDCORD_APPSETTINGS }}

@@ -13,6 +13,3 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 ENTRYPOINT ["dotnet", "FeedCord.dll"]
-
-
-

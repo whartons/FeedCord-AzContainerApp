@@ -1,0 +1,17 @@
+name: Wake FeedCord Poller
+
+on:
+  schedule:
+    # Runs every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  wake-up:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Application URL
+        run: |
+          # Pinging the FQDN to wake the container from scale-to-zero
+          curl -sL ${{ vars.CONTAINER_APP_URL }} > /dev/null
+          echo "Application pinged at $(date)"
