@@ -366,6 +366,10 @@ FodyWeavers.xsd
 
 appsettings.json
 
+# Local copy of FeedCord appsettings (FEEDCORD_APPSETTINGS source).
+# Contains live Discord webhook URLs - NEVER commit.
+appsettings.local.json
+
 # Terraform
 .terraform/
 *.tfstate
