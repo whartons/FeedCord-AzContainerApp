@@ -1,7 +1,115 @@
 ﻿
 ![FeedCord Banner](https://github.com/Qolors/FeedCord/blob/master/FeedCord/docs/images/FeedCord.png)
 ---
+## Fork Information - Stock Readme Included Below
+## Deploying to Azure Container Apps
 
+This repository includes Terraform configuration to deploy FeedCord to Azure Container Apps.
+
+### Non-Invasive Architecture
+**Note:** The core [FeedCord application code](https://github.com/Qolors/FeedCord) in this repository is **100% stock and unmodified**. 
+
+All customizations for the zero-cost architecture (Gist synchronization, persistence, scale-to-zero logic, and deduplication) are implemented externally via:
+1.  **Terraform Sidecars**: The `wake-up-server` handles Gist sync and CSV deduplication.
+2.  **Container Arguments**: We inject `exec` and symlinks at runtime via the Terraform container definition.
+3.  **GitHub Workflows**: We handle image building, rate-limit avoidance, and **deployable configuration injection** (passing `appsettings.json` via secrets) via CI/CD.
+
+This ensures you are running the genuine FeedCord experience, just wrapped in a cost-optimized cloud infrastructure.
+
+### Prerequisites
+
+1. **Azure CLI** - Install from [microsoft.com](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
+2. **Terraform** - Install from [terraform.io](https://www.terraform.io/downloads)
+3. **Azure Subscription** - You'll need an active Azure subscription
+4. **Service Principal for GitHub Actions** (for the deployment workflow):
+
+    The Terraform apply step will output a sensitive JSON blob named `azure_credentials_json`.
+    This JSON contains the Client ID, Tenant ID, and Subscription ID needed for GitHub Actions OIDC login.
+    
+    To view this value, run:
+    ```bash
+    terraform output -raw azure_credentials_json
+    ```
+    
+    Copy this entire JSON output and add it as a GitHub secret:
+    - Go to Settings → Secrets and variables → Actions
+    - Click "New repository secret"
+    - Name: `AZURE_CREDENTIALS`
+    - Value: Paste the JSON output from Terraform
+
+5. **Container App URL** (for the wake-up trigger):
+
+    You need the stable "Global URL" for your application (not a revision-specific one). 
+    
+    To view this value via the Azure CLI, run:
+    ```bash
+    az containerapp show -n feedcord-app -g feedcord-rg --query properties.configuration.ingress.fqdn -o tsv
+    ```
+    
+    Copy this URL and add it as a GitHub variable (Variables → Actions → New repository variable):
+    - Name: `CONTAINER_APP_URL`
+    - Value: `https://<YOUR_OUTPUT_URL>` (Make sure to include **https://**)
+
+
+6. **GitHub Repository Variables** (for the deployment workflow):
+   - `AZURE_RESOURCE_GROUP` - Your resource group name  
+   - `CONTAINER_APP_NAME` - Your container app name
+   - `CONTAINER_APP_URL` - The Global FQDN of your app (retrieved via the CLI command above) (used for the scheduled wake-up trigger)
+
+. **GitHub Repository Secrets** (for the deployment workflow):
+   - `FEEDCORD_APPSETTINGS` - Your complete `appsettings.json` content as a GitHub secret. This contains your RSS feeds, Discord webhook URLs, and other configuration.
+   - `AZURE_CREDENTIALS` - The JSON output from Terraform's `azure_credentials_json`.
+
+### Deployment Steps
+
+**Step 1: Setup GitHub persistence**
+1. Generate a [GitHub PAT (classic)](https://github.com/settings/tokens) with the **`gist`** scope.
+2. Create a **Secret Gist** at [gist.github.com](https://gist.github.com/):
+   - **Filename**: `feed_dump.csv`
+   - **Content**: `url,isYoutube,lastRunDate`
+3. Copy the **Gist ID** from the address bar (it is the long alphanumeric string at the end of the URL).
+4. Store the ID and your Personal Access Token safely.
+ 
+ **Step 1.5: Build and Push Images**
+ 
+ To avoid Docker Hub rate limits, we use GitHub Container Registry (GHCR). 
+ 
+ 1. Go to Actions → "Build and Push to GHCR" → "Run workflow".
+ 2. Wait for this to complete. It will push `feedcord` and mirror `alpine` to your private registry.
+
+**Step 2: Run Terraform Locally**
+
+Provision the Azure infrastructure and automated Gist:
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars and add your values
+terraform init
+terraform plan
+terraform apply
+```
+
+This creates a "Scale-to-Zero" Container App that pulls from your private GitHub Container Registry (mirrored from the official repo) and uses a private Gist for free persistent storage.
+
+**Step 3: Update GitHub Secrets & Variables**
+
+1. Add `AZURE_CREDENTIALS` as a GitHub secret (using the `azure_credentials_json` Terraform output).
+2. Add the repository variables: `AZURE_RESOURCE_GROUP`, `CONTAINER_APP_NAME`.
+3. Add the `CONTAINER_APP_URL` variable (use the `container_app_url` output from Terraform). 
+4. Add `FEEDCORD_APPSETTINGS` secret with your complete `appsettings.json`.
+
+**Step 4: Run the Deployment Workflow**
+
+Trigger it manually:
+- Go to Actions → "Deploy to Azure Container App" → "Run workflow"
+
+**Step 5: Scheduled Polling**
+
+The repository includes a **"Wake FeedCord Poller"** action (`feedcord-keep-alive.yml`). It is scheduled to run every 30 minutes. It pings your app's URL to wake the container, which triggers an immediate RSS poll and then allows the container to shut down again, keeping your costs at $0.00 and your feed state safe in your GitHub Gist.
+
+---
+## Stock Readme Begin
 # FeedCord: Self-hosted RSS Reader for Discord
 
 FeedCord is designed to be a 'turn key' automated RSS feed reader with the main focus on Discord Servers. 
@@ -18,9 +126,6 @@ Use it for increasing community engagement and activity or just for your own per
 
 A showing of one channel. Run as many of these as you want!
 
-
----
-
 ## Running FeedCord
 
 FeedCord is very simple to get up and running. It only takes a few steps:
@@ -28,12 +133,9 @@ FeedCord is very simple to get up and running. It only takes a few steps:
 - Create a Discord Webhook
 - Create and Edit a local file or two
 
-Provided below is a quick guide to get up and running.
+## Configuration (`appsettings.json`)
 
-
-## Quick Setup
-
-### 1. Create a new folder with a new file named `appsettings.json` inside with the following content:
+To run FeedCord (locally or in Azure), you first need to configure your feeds. Create a file named `appsettings.json` with the following content:
 
 ```json
 {
@@ -108,6 +210,10 @@ You can use online web tools like [tunepocket](https://www.tunepocket.com/youtub
        "https://www.youtube.com/feeds/videos.xml?channel_id={YOUR_CHANNEL_ID_HERE}"
      ]
 ```
+
+
+Provided below is a quick guide to get up and running.
+---
 
 ### Running FeedCord
 
