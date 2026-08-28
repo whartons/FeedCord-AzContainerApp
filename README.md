@@ -108,6 +108,23 @@ Trigger it manually:
 
 The repository includes a **"Wake FeedCord Poller"** action (`feedcord-keep-alive.yml`). It is scheduled to run every 30 minutes. It pings your app's URL to wake the container, which triggers an immediate RSS poll and then allows the container to shut down again, keeping your costs at $0.00 and your feed state safe in your GitHub Gist.
 
+> [!IMPORTANT]
+> **GitHub disables scheduled workflows after 60 days of repository inactivity.**
+> When that happens, "Wake FeedCord Poller" stops firing, the container stays scaled
+> to zero, and your Discord feed silently goes stale. Check for this first if posts stop
+> arriving.
+>
+> To recover, re-enable the workflow and push any commit to reset the 60-day clock:
+>
+> ```bash
+> gh workflow list --all                      # look for 'disabled_inactivity'
+> gh workflow enable feedcord-keep-alive.yml
+> gh workflow run feedcord-keep-alive.yml     # wake the poller right away
+> ```
+>
+> Note that commits pushed by `github-actions[bot]` do **not** count as repository
+> activity, so a self-committing workflow will not keep the clock alive on its own.
+
 ---
 ## Stock Readme Begin
 # FeedCord: Self-hosted RSS Reader for Discord
