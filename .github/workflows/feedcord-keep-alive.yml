@@ -11,7 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Application URL
+        env:
+          APP_URL: ${{ vars.CONTAINER_APP_URL }}
         run: |
-          # Pinging the FQDN to wake the container from scale-to-zero
-          curl -sL ${{ vars.CONTAINER_APP_URL }} > /dev/null
-          echo "Application pinged at $(date)"
+          # Wake the container from scale-to-zero and require a healthy response.
+          # -f makes a broken app fail this workflow (GitHub emails on failure)
+          # instead of passing silently, which is how a 12-day outage went unnoticed.
+          # Retries absorb cold-start latency before declaring failure.
+          curl -fsSL --connect-timeout 10 --max-time 60 --retry 6 --retry-delay 10 --retry-all-errors --retry-max-time 240 -o /dev/null "$APP_URL"
+          echo "Application pinged successfully at $(date)"

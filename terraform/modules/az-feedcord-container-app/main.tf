@@ -3,10 +3,27 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-resource "azurerm_container_app_environment" "env" {
-  name                = var.environment_name
+resource "azurerm_log_analytics_workspace" "logs" {
+  name                = "${var.container_app_name}-logs"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
+  sku                 = "PerGB2018"
+
+  # 30 days sits inside the 31 days of retention included at no charge.
+  retention_in_days = 30
+
+  # Hard cost ceiling. 0.1 GB/day caps ingestion at ~3 GB/month, comfortably
+  # inside Azure Monitor's 5 GB/month free ingestion grant, so this workspace
+  # cannot produce a bill even if something starts log-spamming.
+  daily_quota_gb = 0.1
+}
+
+resource "azurerm_container_app_environment" "env" {
+  name                       = var.environment_name
+  resource_group_name        = azurerm_resource_group.rg.name
+  location                   = azurerm_resource_group.rg.location
+  logs_destination           = "log-analytics"
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
 }
 
 resource "azurerm_container_app" "feedcord" {
@@ -49,8 +66,21 @@ resource "azurerm_container_app" "feedcord" {
       image   = "ghcr.io/whartons/alpine:3.18"
       command = ["/bin/sh", "-c"]
       args    = [replace(<<-EOT
-        set -x
-        apk add --no-cache curl jq
+        apk add --no-cache curl jq busybox-extras
+
+        # Health endpoint for the keep-alive ping. Alpine ships httpd in
+        # busybox-extras, not base busybox, so plain `busybox httpd` is a no-op.
+        # Served from a dedicated dir so the container filesystem is not
+        # exposed through the public ingress.
+        mkdir -p /healthz
+        echo 'OK' > /healthz/index.html
+        busybox-extras httpd -p 80 -h /healthz &
+        sleep 1
+        if wget -qO- http://127.0.0.1/ >/dev/null 2>&1; then
+          echo 'healthz: listening on :80'
+        else
+          echo 'healthz: FAILED to start'
+        fi
 
         sync_to_gist() {
           echo "=== Syncing to Gist at $(date) ==="
@@ -61,7 +91,7 @@ resource "azurerm_container_app" "feedcord" {
             
             CONTENT=$(jq -Rsa . /shared/feed_dump.csv)
             echo '{"files":{"feed_dump.csv":{"content":'$CONTENT'}}}' > /shared/payload.json
-            curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" -d @/shared/payload.json -w "%%{http_code}" https://api.github.com/gists/$GITHUB_GIST_ID > /shared/up_code.txt
+            curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" -d @/shared/payload.json -o /dev/null -w "%%{http_code}" https://api.github.com/gists/$GITHUB_GIST_ID > /shared/up_code.txt
             UP_CODE=$(cat /shared/up_code.txt)
             echo "Sync result: HTTP $UP_CODE"
           else
@@ -86,8 +116,6 @@ resource "azurerm_container_app" "feedcord" {
         
         # Signal that Gist download is complete and file is ready
         touch /shared/ready
-        echo 'OK' > index.html
-        busybox httpd -p 80 -h . &
         echo 'Sidecar ready - starting periodic sync loop'
         
         while true; do
