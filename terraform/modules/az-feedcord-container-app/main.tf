@@ -155,6 +155,15 @@ resource "azurerm_container_app" "feedcord" {
 
     min_replicas = 0
     max_replicas = 1
+
+    # Each wake buys exactly one feed poll -- FeedCord's 10-minute check
+    # interval never fires before shutdown -- so the default 300s cooldown
+    # spends ~4.5 minutes idle per wake. Dropping to 120s roughly triples the
+    # number of wakes the Container Apps free grant (180,000 vCPU-s/month)
+    # will cover, which is what buys a faster polling cadence for $0.
+    # 120s leaves ~5x headroom over the observed 25s worst-case poll, and the
+    # sidecar's SIGTERM handler still gets its ~15s to sync state to the Gist.
+    cooldown_period_in_seconds = 120
   }
 
   ingress {
